@@ -21,7 +21,6 @@ async function getUserId(username) {
     throw new Error('User not found');
 }
 
-// Main API route: fetches up to 10 games for the given username
 app.get('/get-games', async (req, res) => {
     try {
         const username = req.query.username;
@@ -32,28 +31,29 @@ app.get('/get-games', async (req, res) => {
         const games = response.data.data;
 
         const enrichedGames = await Promise.all(games.map(async (game) => {
-            try {
-                const voteRes = await axios.get(`https://games.roblox.com/v1/games/votes?universeIds=${game.universeId}`);
-                const voteData = voteRes.data.data[0];
+            const universeId = game.universeId;
 
-                return {
-                    name: game.name,
-                    id: game.id,
-                    visits: game.visits,
-                    likes: voteData.upVotes,
-                    dislikes: voteData.downVotes,
-                    thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
-                };
-            } catch {
-                return {
-                    name: game.name,
-                    id: game.id,
-                    visits: game.visits,
-                    likes: 0,
-                    dislikes: 0,
-                    thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
-                };
+            let likes = 0;
+            let dislikes = 0;
+
+            try {
+                const voteRes = await axios.get(`https://games.roblox.com/v1/games/votes?universeIds=${universeId}`);
+                const voteData = voteRes.data.data[0];
+                likes = voteData.upVotes;
+                dislikes = voteData.downVotes;
+            } catch (e) {
+                console.warn("Could not fetch votes for game", game.name);
             }
+
+            return {
+                name: game.name,
+                id: game.id,
+                universeId: universeId,
+                visits: game.visits,
+                likes,
+                dislikes,
+                thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
+            };
         }));
 
         res.json({ userId, games: enrichedGames });
