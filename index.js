@@ -25,25 +25,41 @@ async function getUserId(username) {
 app.get('/get-games', async (req, res) => {
     try {
         const username = req.query.username;
-        if (!username) return res.status(400).json({ error: 'Username is required' });
+        if (!username) return res.status(400).send({ error: 'Username required' });
 
-        console.log(`Looking up user ID for ${username}...`);
         const userId = await getUserId(username);
-        console.log(`User ID found: ${userId}`);
+        const response = await axios.get(`https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=10`);
+        const games = response.data.data;
 
-        const gamesRes = await axios.get(`https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=10`);
+        const enrichedGames = await Promise.all(games.map(async (game) => {
+            try {
+                const voteRes = await axios.get(`https://games.roblox.com/v1/games/votes?universeIds=${game.universeId}`);
+                const voteData = voteRes.data.data[0];
 
-        const games = gamesRes.data.data.map(game => ({
-            name: game.name,
-            id: game.id,
-            visits: game.visits,
-            thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
+                return {
+                    name: game.name,
+                    id: game.id,
+                    visits: game.visits,
+                    likes: voteData.upVotes,
+                    dislikes: voteData.downVotes,
+                    thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
+                };
+            } catch {
+                return {
+                    name: game.name,
+                    id: game.id,
+                    visits: game.visits,
+                    likes: 0,
+                    dislikes: 0,
+                    thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
+                };
+            }
         }));
 
-        res.json({ userId, games });
+        res.json({ userId, games: enrichedGames });
     } catch (err) {
-        console.error('Error:', err.message || err.response?.data);
-        res.status(500).json({ error: 'Failed to fetch games', message: err.message });
+        console.error(err);
+        res.status(500).send({ error: 'Failed to fetch games' });
     }
 });
 
