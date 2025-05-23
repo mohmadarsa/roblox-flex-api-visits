@@ -32,24 +32,34 @@ app.get('/get-games', async (req, res) => {
 
         const enrichedGames = await Promise.all(games.map(async (game) => {
             const universeId = game.universeId;
-
+            let visits = 0;
             let likes = 0;
             let dislikes = 0;
 
             try {
+                // Fetch votes
                 const voteRes = await axios.get(`https://games.roblox.com/v1/games/votes?universeIds=${universeId}`);
                 const voteData = voteRes.data.data[0];
                 likes = voteData.upVotes;
                 dislikes = voteData.downVotes;
             } catch (e) {
-                console.warn("Could not fetch votes for game", game.name);
+                console.warn("❗ Couldn't fetch votes for", game.name);
+            }
+
+            try {
+                // Fetch visits and stats
+                const statRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
+                const gameStats = statRes.data.data[0];
+                visits = gameStats.visits;
+            } catch (e) {
+                console.warn("❗ Couldn't fetch visits for", game.name);
             }
 
             return {
                 name: game.name,
                 id: game.id,
                 universeId: universeId,
-                visits: game.visits,
+                visits,
                 likes,
                 dislikes,
                 thumbnail: `https://thumbnails.roblox.com/v1/places/${game.id}/thumbnail?size=768x432&format=png`
