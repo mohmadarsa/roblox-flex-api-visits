@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// 🔧 Utility: get UserId from username
+// 🔧 Get UserId from Roblox username
 async function getUserId(username) {
     const res = await axios.post("https://users.roblox.com/v1/usernames/users", {
         usernames: [username],
@@ -17,11 +17,16 @@ async function getUserId(username) {
 
     const user = res.data.data[0];
     if (user && user.id) return user.id;
-
     throw new Error("User not found");
 }
 
-// 📦 Route: /get-games?username=USERNAME
+// 🔧 Get UniverseId from PlaceId
+async function getUniverseIdFromPlaceId(placeId) {
+    const res = await axios.get(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`);
+    return res.data.universeId;
+}
+
+// 📦 /get-games?username=USERNAME
 app.get("/get-games", async (req, res) => {
     try {
         const username = req.query.username;
@@ -32,36 +37,33 @@ app.get("/get-games", async (req, res) => {
         const games = response.data.data;
 
         const enrichedGames = await Promise.all(games.map(async (game) => {
-            const universeId = game.universeId;
             let visits = 0;
             let likes = 0;
             let dislikes = 0;
+            let universeId;
 
             try {
-                // Fetch vote stats
+                universeId = await getUniverseIdFromPlaceId(game.id);
+            } catch (e) {
+                console.warn(`❗ Failed to get universeId for ${game.name}`);
+            }
+
+            try {
                 const voteRes = await axios.get(`https://games.roblox.com/v1/games/votes?universeIds=${universeId}`);
                 const voteData = voteRes.data.data[0];
-                if (voteData) {
-                    likes = voteData.upVotes;
-                    dislikes = voteData.downVotes;
-                }
+                likes = voteData.upVotes;
+                dislikes = voteData.downVotes;
             } catch (e) {
-                console.warn(`❗ Could not fetch votes for ${game.name}:`, e.message);
+                console.warn(`❗ Failed to get votes for ${game.name}`);
             }
 
             try {
-                // Fetch visit stats
                 const statRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
                 const gameStats = statRes.data.data[0];
-                if (gameStats) {
-                    visits = gameStats.visits;
-                }
+                visits = gameStats.visits;
             } catch (e) {
-                console.warn(`❗ Could not fetch stats for ${game.name}:`, e.message);
+                console.warn(`❗ Failed to get visits for ${game.name}`);
             }
-
-            // Optional logging for debugging
-            console.log(`[✔] ${game.name} — Visits: ${visits}, Likes: ${likes}, Dislikes: ${dislikes}`);
 
             return {
                 name: game.name,
@@ -76,12 +78,12 @@ app.get("/get-games", async (req, res) => {
 
         res.json({ userId, games: enrichedGames });
     } catch (err) {
-        console.error("🔥 Failed to fetch games:", err.message);
+        console.error("🔥 Error fetching game data:", err.message);
         res.status(500).send({ error: "Failed to fetch games" });
     }
 });
 
-// 🚀 Start server
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
 });
+  
