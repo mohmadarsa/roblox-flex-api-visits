@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// 🔧 Get userId from username
+// Get userId from username
 async function getUserId(username) {
     const res = await axios.post("https://users.roblox.com/v1/usernames/users", {
         usernames: [username],
@@ -19,27 +19,26 @@ async function getUserId(username) {
     throw new Error("User not found");
 }
 
-// 📦 /get-games?username=USERNAME
+// Main route
 app.get("/get-games", async (req, res) => {
     try {
         const username = req.query.username;
         if (!username) return res.status(400).json({ error: "Username required" });
 
         const userId = await getUserId(username);
-
         const response = await axios.get(`https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=10`);
         const games = response.data.data;
 
         const enrichedGames = await Promise.all(games.map(async (game) => {
             const universeId = game.universeId;
+            if (!universeId) {
+                console.warn(`⚠️ Skipping ${game.name} (no universeId)`);
+                return null;
+            }
+
             let visits = 0;
             let likes = 0;
             let dislikes = 0;
-
-            if (!universeId) {
-                console.warn(`⚠️ No universeId for ${game.name}`);
-                return null;
-            }
 
             try {
                 const statsRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
@@ -48,9 +47,11 @@ app.get("/get-games", async (req, res) => {
                     visits = stats.visits;
                     likes = stats.upVotes;
                     dislikes = stats.downVotes;
+                } else {
+                    console.warn(`⚠️ No stats returned for ${game.name}`);
                 }
             } catch (e) {
-                console.warn(`❗ Failed to fetch stats for ${game.name}:`, e.message);
+                console.warn(`❗ Stats fetch failed for ${game.name}:`, e.message);
             }
 
             return {
@@ -64,10 +65,10 @@ app.get("/get-games", async (req, res) => {
             };
         }));
 
-        res.json({
-            userId,
-            games: enrichedGames.filter((g) => g !== null),
-        });
+        // Filter out games with no universeId or missing data
+        const validGames = enrichedGames.filter((g) => g !== null);
+
+        res.json({ userId, games: validGames });
     } catch (err) {
         console.error("🔥 API Error:", err.message);
         res.status(500).json({ error: "Failed to fetch games" });
