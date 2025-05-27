@@ -38,6 +38,7 @@ app.get("/get-games", async (req, res) => {
 
             if (!universeId) {
                 console.warn(`⚠️ ${game.name} has no universeId — showing N/A for stats`);
+                // Still return a full game object with "N/A" stats.
             } else {
                 try {
                     const statsRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
