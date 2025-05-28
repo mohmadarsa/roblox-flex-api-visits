@@ -42,6 +42,7 @@ app.get("/get-games", async (req, res) => {
       games.map(async (game) => {
         const placeId = game.id;
         const universeId = game.universeId || knownUniverses[placeId];
+        console.log(`🧠 Using universeId for ${game.name} (placeId ${placeId}):`, universeId);
 
         let visits = "N/A";
         let likes = "N/A";
