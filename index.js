@@ -37,18 +37,18 @@ app.get("/get-games", async (req, res) => {
             let dislikes = "N/A";
 
             if (!universeId) {
-                console.warn(`⚠️ ${game.name} has no universeId — showing N/A for stats`);
-                // Still return a full game object with "N/A" stats.
+                console.warn(`⚠️ ${game.name} has no universeId — showing N/A`);
             } else {
                 try {
                     const statsRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
+                    console.log(`📊 Stats for ${game.name} (universeId ${universeId}):`, statsRes.data);
                     const stats = statsRes.data.data[0];
                     if (stats) {
                         visits = stats.visits;
                         likes = stats.upVotes;
                         dislikes = stats.downVotes;
                     } else {
-                        console.warn(`⚠️ No stats returned for ${game.name}`);
+                        console.warn(`⚠️ No stats found for ${game.name}`);
                     }
                 } catch (e) {
                     console.warn(`❗ Failed to fetch stats for ${game.name}:`, e.message);
