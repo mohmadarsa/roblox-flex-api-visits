@@ -11,7 +11,10 @@ app.use(express.json());
 // ✅ Known universe fallback (for older games)
 const knownUniverses = {
   66654135: 142823291, // Murder Mystery 2
-  // Add more placeId: universeId mappings here if needed
+  7496300402: 2918007456, // Not Alone
+  7242216625: 2822108470, // Obby DCO [Beta]
+  5831571340: 2074435046, // Random Parkour
+  3999217261: 1341857323  // Ragdoll Dash
 };
 
 // 🔍 Get userId from username
@@ -41,7 +44,7 @@ app.get("/get-games", async (req, res) => {
     const enrichedGames = await Promise.all(
       games.map(async (game) => {
         const placeId = game.id;
-        const universeId = game.universeId || knownUniverses[placeId];
+        const universeId = game.universeId || knownUniverses[placeId] || null;
         console.log(`🧠 Using universeId for ${game.name} (placeId ${placeId}):`, universeId);
 
         let visits = "N/A";
