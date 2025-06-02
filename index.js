@@ -72,8 +72,8 @@ app.get("/get-games", async (req, res) => {
             const stats = statsRes.data.data[0];
             if (stats) {
               visits = stats.visits;
-              likes = stats.upVotes;
-              dislikes = stats.downVotes;
+              likes = stats.totalUpVotes;
+              dislikes = stats.totalDownVotes;
               console.log(`📊 Stats for ${game.name}: visits=${visits}, likes=${likes}, dislikes=${dislikes}`);
             }
           } catch (err) {
