@@ -22,22 +22,24 @@ async function getUserId(username) {
   throw new Error("User not found");
 }
 
-// Get universeId using Roblox Open Cloud
+// Get universeId from placeId using Open Cloud
 async function getUniverseIdFromPlaceId(placeId) {
   try {
+    console.log(`🔍 Fetching universeId for placeId ${placeId}`);
     const res = await axios.get(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`, {
       headers: {
         'x-api-key': ROBLOX_API_KEY
       }
     });
+    console.log(`✅ Got universeId for ${placeId}:`, res.data.universeId);
     return res.data.universeId;
   } catch (err) {
-    console.warn(`⚠️ Could not fetch universeId for placeId ${placeId}: ${err.message}`);
+    console.warn(`❌ Failed to get universeId for ${placeId}: ${err.message}`);
     return null;
   }
 }
 
-// Main endpoint
+// /get-games?username=USERNAME
 app.get("/get-games", async (req, res) => {
   try {
     const username = req.query.username;
@@ -49,44 +51,51 @@ app.get("/get-games", async (req, res) => {
     );
     const games = response.data.data;
 
-    const enrichedGames = await Promise.all(games.map(async (game) => {
-      const placeId = game.id;
-      let universeId = game.universeId || await getUniverseIdFromPlaceId(placeId);
+    const enrichedGames = await Promise.all(
+      games.map(async (game) => {
+        const placeId = game.id;
+        let universeId = game.universeId || null;
 
-      let visits = "N/A";
-      let likes = "N/A";
-      let dislikes = "N/A";
-
-      if (universeId) {
-        try {
-          const statsRes = await axios.get(
-            `https://games.roblox.com/v1/games?universeIds=${universeId}`
-          );
-          const stats = statsRes.data.data[0];
-          if (stats) {
-            visits = stats.visits;
-            likes = stats.upVotes;
-            dislikes = stats.downVotes;
-          }
-        } catch (e) {
-          console.warn(`❗ Stats fetch failed for ${game.name}:`, e.message);
+        if (!universeId) {
+          universeId = await getUniverseIdFromPlaceId(placeId);
         }
-      }
 
-      return {
-        name: game.name,
-        id: placeId,
-        universeId: universeId || "N/A",
-        visits,
-        likes,
-        dislikes,
-        thumbnail: `https://thumbnails.roblox.com/v1/places/${placeId}/thumbnail?size=768x432&format=png`
-      };
-    }));
+        let visits = "N/A";
+        let likes = "N/A";
+        let dislikes = "N/A";
+
+        if (universeId) {
+          try {
+            const statsRes = await axios.get(
+              `https://games.roblox.com/v1/games?universeIds=${universeId}`
+            );
+            const stats = statsRes.data.data[0];
+            if (stats) {
+              visits = stats.visits;
+              likes = stats.upVotes;
+              dislikes = stats.downVotes;
+              console.log(`📊 Stats for ${game.name}: visits=${visits}, likes=${likes}, dislikes=${dislikes}`);
+            }
+          } catch (err) {
+            console.warn(`❗ Failed to fetch stats for ${game.name}: ${err.message}`);
+          }
+        }
+
+        return {
+          name: game.name,
+          id: placeId,
+          universeId: universeId || "N/A",
+          visits,
+          likes,
+          dislikes,
+          thumbnail: `https://thumbnails.roblox.com/v1/places/${placeId}/thumbnail?size=768x432&format=png`
+        };
+      })
+    );
 
     res.json({ userId, games: enrichedGames });
   } catch (err) {
-    console.error("🔥 API error:", err.message);
+    console.error("🔥 API Error:", err.message);
     res.status(500).json({ error: "Failed to fetch games" });
   }
 });
