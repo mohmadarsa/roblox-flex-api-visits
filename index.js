@@ -8,6 +8,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
 
 // Get userId from username
@@ -56,6 +60,8 @@ app.get("/get-games", async (req, res) => {
         const placeId = game.id;
         let universeId = game.universeId || null;
 
+        
+
         if (!universeId) {
           universeId = await getUniverseIdFromPlaceId(placeId);
         }
@@ -76,8 +82,13 @@ app.get("/get-games", async (req, res) => {
               dislikes = stats.totalDownVotes;
               console.log(`📊 Stats for ${game.name}: visits=${visits}, likes=${likes}, dislikes=${dislikes}`);
             }
+            await sleep(300); // Pause to avoid hitting rate limit
           } catch (err) {
-            console.warn(`❗ Failed to fetch stats for ${game.name}: ${err.message}`);
+            if (err.response?.status === 429) {
+              console.warn(`⏳ Rate limited for ${game.name}. Try again later.`);
+            } else {
+              console.warn(`❗ Failed to fetch stats for ${game.name}: ${err.message}`);
+            }
           }
         }
 
