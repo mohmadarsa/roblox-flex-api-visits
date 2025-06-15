@@ -50,8 +50,9 @@ app.get("/get-games", async (req, res) => {
     if (!username) return res.status(400).json({ error: "Username required" });
 
     const userId = await getUserId(username);
+    const limit = req.query.limit || 10;
     const response = await axios.get(
-      `https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=10`
+      `https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=${limit}`
     );
     const games = response.data.data;
 
@@ -104,7 +105,9 @@ app.get("/get-games", async (req, res) => {
           visits,
           likes,
           dislikes,
-          thumbnail: `https://thumbnails.roblox.com/v1/places/${placeId}/thumbnail?size=768x432&format=png`
+          thumbnail: `https://thumbnails.roblox.com/v1/places/${placeId}/thumbnail?size=768x432&format=png`,
+          created: game.created,
+          isArchived: game.isArchived,
         };
       })
     );
