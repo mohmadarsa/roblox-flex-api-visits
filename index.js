@@ -73,7 +73,12 @@ app.get("/get-games", async (req, res) => {
         if (universeId) {
           try {
             const statsRes = await axios.get(
-              `https://games.roblox.com/v1/games?universeIds=${universeId}`
+              `https://games.roblox.com/v1/games?universeIds=${universeId}`,
+              {
+                headers: {
+                  "User-Agent": "Mozilla/5.0 (compatible; FlexYourGame/1.0)"
+                }
+              }
             );
             const stats = statsRes.data.data[0];
             if (stats) {
