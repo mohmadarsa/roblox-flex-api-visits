@@ -78,8 +78,8 @@ app.get("/get-games", async (req, res) => {
             const stats = statsRes.data.data[0];
             if (stats) {
               visits = stats.visits;
-              likes = stats.totalUpVotes;
-              dislikes = stats.totalDownVotes;
+              likes = stats.voteCount ? stats.voteCount.upVotes : "N/A";
+              dislikes = stats.voteCount ? stats.voteCount.downVotes : "N/A";
               console.log(`📊 Stats for ${game.name}: visits=${visits}, likes=${likes}, dislikes=${dislikes}`);
             }
             await sleep(300); // Pause to avoid hitting rate limit
